@@ -123,6 +123,19 @@ button.del{color:var(--danger);border-color:var(--danger)}
 .day h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);font-weight:600;
   margin:0 0 8px;display:flex;justify-content:space-between}
 .exportbtn{width:100%;margin-top:22px}
+
+/* ---------- sites ---------- */
+.sites-add{margin-bottom:16px}
+.sites-add > button{width:100%}
+.site-form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;margin-bottom:16px}
+.site-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;gap:10px}
+.site-card:active{background:var(--panel-2)}
+.site-card .name{font-weight:600;overflow-wrap:anywhere}
+.site-card .addr{font-size:.84rem;color:var(--steel);margin-top:2px;overflow-wrap:anywhere}
+.site-card .count{font-family:"Barlow Condensed",sans-serif;font-size:1.1rem;color:var(--steel);white-space:nowrap;flex-shrink:0}
+.selectfield{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7480' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px}
 </style>
 </head>
 <body>
@@ -155,8 +168,11 @@ button.del{color:var(--danger);border-color:var(--danger)}
 
     <form class="formcard" id="form" autocomplete="off">
       <label>Date<input type="date" id="fDate" required></label>
-      <label>Place<input id="fPlace" list="places" placeholder="Site or plant name" required></label>
-      <datalist id="places"></datalist>
+      <label>Place
+        <select id="fPlace" class="selectfield" required>
+          <option value="" disabled selected>Choose a site</option>
+        </select>
+      </label>
       <label>Notes<textarea id="fNotes" placeholder="What you did on this visit"></textarea></label>
       <label class="toggle" id="toggleWrap"><input type="checkbox" id="fAction"> Action required</label>
       <label id="actionWrap" class="actionbox" hidden>What needs doing<textarea id="fActionNote" placeholder="Describe the action required"></textarea></label>
@@ -166,6 +182,30 @@ button.del{color:var(--danger);border-color:var(--danger)}
       </div>
       <div class="status" id="status"></div>
     </form>
+  </section>
+
+  <section class="page" id="page-sites" hidden>
+    <div class="topbar">
+      <div>
+        <h1>Sites</h1>
+        <div class="sub" id="sitesSub"></div>
+      </div>
+    </div>
+
+    <div class="sites-add">
+      <button type="button" class="ghost" id="addSiteToggle">+ Add new site</button>
+    </div>
+
+    <form class="site-form" id="siteForm" hidden autocomplete="off">
+      <label>Site name<input id="sName" placeholder="e.g. Riverside Depot" required></label>
+      <label>Address / notes (optional)<textarea id="sNotes" placeholder="Location details, access notes, contact"></textarea></label>
+      <div class="btnrow">
+        <button type="submit" class="primary" id="siteSaveBtn">Save site</button>
+        <button type="button" class="ghost" id="siteCancelBtn">Cancel</button>
+      </div>
+    </form>
+
+    <div class="feed" id="sitesList"></div>
   </section>
 
   <section class="page" id="page-archive" hidden>
@@ -194,6 +234,10 @@ button.del{color:var(--danger);border-color:var(--danger)}
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
       <span>Log visit</span>
     </button>
+    <button type="button" class="navitem" data-page="sites" aria-current="false">
+      <svg viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>
+      <span>Sites</span>
+    </button>
     <button type="button" class="navitem" data-page="archive" aria-current="false">
       <span class="badge-dot" id="navDot" hidden></span>
       <svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="1.5"/><path d="M3.5 10h17M8 3.5v5M16 3.5v5"/></svg>
@@ -215,19 +259,24 @@ button.del{color:var(--danger);border-color:var(--danger)}
   const fmtShort = iso => { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,{day:"numeric",month:"short"}); };
 
   let visits = [];
+  let sites = [];
   let editingId = null;
+  let editingSiteId = null;
   let archiveOpenOnly = false;
   let store = null;
+  let siteStore = null;
   let downloads = null;
 
   $("todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
 
-  const pages = { home:$("page-home"), log:$("page-log"), archive:$("page-archive") };
+  const pages = { home:$("page-home"), log:$("page-log"), sites:$("page-sites"), archive:$("page-archive") };
   function goTo(name){
     Object.entries(pages).forEach(([k,el])=> el.hidden = k!==name);
     document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current", String(b.dataset.page===name)));
     window.scrollTo(0,0);
     if(name!=="log" && editingId) resetForm();
+    if(name!=="sites") closeSiteForm();
+    if(name==="log") populatePlaceSelect();
   }
   document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>goTo(b.dataset.page)));
   $("seeArchive").addEventListener("click",()=>goTo("archive"));
@@ -255,6 +304,7 @@ button.del{color:var(--danger);border-color:var(--danger)}
 
   function startEdit(v){
     editingId = v.id;
+    populatePlaceSelect(v.place);
     $("fDate").value=v.date; $("fPlace").value=v.place;
     $("fAction").checked=!!v.action; $("fActionNote").value=v.actionNote||""; syncToggle();
     $("fNotes").value=v.notes||"";
@@ -334,6 +384,114 @@ button.del{color:var(--danger);border-color:var(--danger)}
   function closeSheet(){ $("sheetBackdrop").hidden=true; }
   $("sheetBackdrop").addEventListener("click",e=>{ if(e.target===$("sheetBackdrop")) closeSheet(); });
 
+  // ---------- sites ----------
+  function siteVisitCount(name){ return visits.filter(v=>v.place===name).length; }
+
+  function populatePlaceSelect(selectValue){
+    const sel = $("fPlace");
+    const prev = selectValue !== undefined ? selectValue : sel.value;
+    sel.textContent = "";
+    const ph=document.createElement("option"); ph.value=""; ph.disabled=true; ph.textContent="Choose a site";
+    sel.appendChild(ph);
+    const names = [...new Set([...sites.map(s=>s.name), ...visits.map(v=>v.place)])].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+    names.forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; sel.appendChild(o); });
+    if(prev && names.includes(prev)) sel.value = prev; else ph.selected = true;
+  }
+
+  function openSiteForm(){
+    $("siteForm").hidden = false;
+    $("addSiteToggle").hidden = true;
+    $("sName").focus();
+  }
+  function closeSiteForm(){
+    editingSiteId = null;
+    $("siteForm").hidden = true;
+    $("siteForm").reset();
+    $("addSiteToggle").hidden = false;
+    $("siteSaveBtn").textContent = "Save site";
+  }
+  $("addSiteToggle").addEventListener("click", openSiteForm);
+  $("siteCancelBtn").addEventListener("click", closeSiteForm);
+
+  $("siteForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const name = $("sName").value.trim();
+    const notes = $("sNotes").value.trim();
+    if(!name) return;
+    $("siteSaveBtn").disabled = true;
+    try{
+      if(editingSiteId){
+        await siteStore.update(editingSiteId, {name, notes});
+      } else {
+        await siteStore.add({name, notes, createdAt:Date.now()});
+      }
+      closeSiteForm();
+    }catch(err){
+      alert("Couldn't save site: "+((err&&err.message)||"try again."));
+    }finally{ $("siteSaveBtn").disabled = false; }
+  });
+
+  function openSiteSheet(site){
+    const s = $("sheet");
+    s.innerHTML = "";
+    const grab=document.createElement("div"); grab.className="grabber"; s.appendChild(grab);
+    const h=document.createElement("h3"); h.textContent=site.name; s.appendChild(h);
+    const when=document.createElement("div"); when.className="when";
+    when.textContent = siteVisitCount(site.name)+" visit"+(siteVisitCount(site.name)===1?"":"s")+" logged";
+    s.appendChild(when);
+    if(site.notes){
+      const b=document.createElement("div"); b.className="block";
+      const hh=document.createElement("h4"); hh.textContent="Notes";
+      const p=document.createElement("p"); p.textContent=site.notes;
+      b.append(hh,p); s.appendChild(b);
+    }
+    const row=document.createElement("div"); row.className="btnrow";
+    const e=document.createElement("button"); e.type="button"; e.className="ghost"; e.textContent="Edit";
+    e.onclick=()=>{
+      closeSheet();
+      goTo("sites");
+      editingSiteId=site.id;
+      $("sName").value=site.name; $("sNotes").value=site.notes||"";
+      $("siteSaveBtn").textContent="Save changes";
+      openSiteForm();
+    };
+    row.appendChild(e);
+    s.appendChild(row);
+    const row2=document.createElement("div"); row2.className="btnrow";
+    const x=document.createElement("button"); x.type="button"; x.className="ghost del"; x.textContent="Delete site";
+    x.onclick=()=>{
+      const n = siteVisitCount(site.name);
+      const msg = n ? "Delete "+site.name+"? "+n+" logged visit"+(n===1?"":"s")+" will keep this name but the site will no longer be listed." : "Delete "+site.name+"?";
+      if(confirm(msg)) siteStore.remove(site.id).then(closeSheet).catch(err=>alert("Couldn't delete: "+(err.message||err.code)));
+    };
+    row2.appendChild(x);
+    s.appendChild(row2);
+    $("sheetBackdrop").hidden=false;
+  }
+
+  function renderSitesTab(){
+    $("sitesSub").textContent = sites.length ? sites.length+" site"+(sites.length===1?"":"s") : "";
+    const list = $("sitesList");
+    list.textContent = "";
+    if(!sites.length){
+      const e=document.createElement("div"); e.className="empty";
+      const b=document.createElement("b"); b.textContent="No sites yet";
+      e.append(b, document.createTextNode("Add the places you visit so they're ready to pick when logging a visit."));
+      list.appendChild(e); return;
+    }
+    [...sites].sort((a,b)=>a.name.localeCompare(b.name)).forEach(site=>{
+      const card=document.createElement("div"); card.className="site-card";
+      card.onclick=()=>openSiteSheet(site);
+      const left=document.createElement("div");
+      const name=document.createElement("div"); name.className="name"; name.textContent=site.name;
+      left.appendChild(name);
+      if(site.notes){ const a=document.createElement("div"); a.className="addr"; a.textContent=site.notes; left.appendChild(a); }
+      const count=document.createElement("div"); count.className="count"; count.textContent=siteVisitCount(site.name);
+      card.append(left,count);
+      list.appendChild(card);
+    });
+  }
+
   function makeCard(v){
     const card=document.createElement("article");
     card.className="card"+(v.action&&!v.actionDone?" needs":"");
@@ -360,9 +518,8 @@ button.del{color:var(--danger);border-color:var(--danger)}
     $("countOpen").textContent = open.length;
     $("navDot").hidden = open.length===0;
 
-    const places = [...new Set(visits.map(v=>v.place).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    const dl=$("places"); dl.textContent="";
-    places.forEach(p=>{ const o=document.createElement("option"); o.value=p; dl.appendChild(o); });
+    renderSitesTab();
+    populatePlaceSelect();
 
     const recent = [...visits].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0)).slice(0,8);
     const feed=$("recentFeed"); feed.textContent="";
@@ -421,16 +578,26 @@ button.del{color:var(--danger);border-color:var(--danger)}
   });
 
   const LS_KEY = "plant-visit-log-v1";
+  const LS_SITES_KEY = "plant-visit-sites-v1";
   function localLoad(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(e){ return []; } }
   function localSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(visits)); }catch(e){} }
+  function localSitesLoad(){ try{ return JSON.parse(localStorage.getItem(LS_SITES_KEY)||"[]"); }catch(e){ return []; } }
+  function localSitesSave(){ try{ localStorage.setItem(LS_SITES_KEY, JSON.stringify(sites)); }catch(e){} }
   const localStore = {
     async add(v){ v.id = "v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); visits.push(v); localSave(); render(); return v.id; },
     async update(id,patch){ const v=visits.find(x=>x.id===id); if(v){Object.assign(v,patch); localSave(); render();} },
     async remove(id){ visits = visits.filter(x=>x.id!==id); localSave(); render(); }
   };
+  const localSiteStore = {
+    async add(v){ v.id = "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); sites.push(v); localSitesSave(); render(); return v.id; },
+    async update(id,patch){ const v=sites.find(x=>x.id===id); if(v){Object.assign(v,patch); localSitesSave(); render();} },
+    async remove(id){ sites = sites.filter(x=>x.id!==id); localSitesSave(); render(); }
+  };
 
   resetForm();
-  visits = localLoad(); store = localStore; render();
+  visits = localLoad(); store = localStore;
+  sites = localSitesLoad(); siteStore = localSiteStore;
+  render();
   goTo("home");
 
   (async ()=>{
@@ -449,6 +616,17 @@ button.del{color:var(--danger);border-color:var(--danger)}
       visits = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
       render();
     }, err=>{ setStatus("Live sync stopped. Reload the page to reconnect."); });
+
+    const siteCol = db.collection("sites");
+    siteStore = {
+      async add(v){ const ref = await siteCol.add(v); return ref.id; },
+      async update(id,patch){ await siteCol.doc(id).update(patch); },
+      async remove(id){ await siteCol.doc(id).delete(); }
+    };
+    siteCol.onSnapshot(snap=>{
+      sites = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      render();
+    }, err=>{});
   })();
 })();
 </script>
