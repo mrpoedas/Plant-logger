@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Site Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F0F2F4; --panel:#FFFFFF; --panel-2:#F7F8F9; --ink:#151A20; --steel:#6B7480; --line:#DFE3E7;
+  --amber:#E8A317; --amber-ink:#3A2900; --amber-soft:#FCEED1; --green:#2E7D5B; --green-soft:#E1F3EA; --danger:#B3261E;
+  --accent:#1B2027; --accent-ink:#F0F2F4;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1216; --panel:#171C22; --panel-2:#1D232A; --ink:#EDEFF2; --steel:#8B95A1; --line:#2A3038;
+    --amber:#E8A317; --amber-ink:#241900; --amber-soft:#3A2C05; --green:#5CC48F; --green-soft:#173327; --danger:#F28B82;
+    --accent:#EDEFF2; --accent-ink:#0E1216;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1216; --panel:#171C22; --panel-2:#1D232A; --ink:#EDEFF2; --steel:#8B95A1; --line:#2A3038;
+  --amber:#E8A317; --amber-ink:#241900; --amber-soft:#3A2C05; --green:#5CC48F; --green-soft:#173327; --danger:#F28B82;
+  --accent:#EDEFF2; --accent-ink:#0E1216;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:400 15.5px/1.45 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.cond{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif}
+button{font-family:inherit}
+
+.app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.page{flex:1;padding:0 16px 100px}
+.page[hidden]{display:none}
+
+.topbar{padding:22px 0 14px;display:flex;align-items:baseline;justify-content:space-between}
+.topbar h1{font-size:1.7rem;margin:0;font-weight:700;letter-spacing:.01em}
+.topbar .sub{color:var(--steel);font-size:.88rem;margin-top:2px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);
+  display:flex;padding-bottom:env(safe-area-inset-bottom,0px);max-width:640px;margin:0 auto;
+  box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+nav.tabs button{flex:1;background:none;border:0;padding:10px 4px 8px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;color:var(--steel);cursor:pointer;position:relative}
+nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav.tabs button span{font-size:.72rem;font-weight:600;letter-spacing:.01em}
+nav.tabs button[aria-current="true"]{color:var(--amber)}
+nav.tabs button[aria-current="true"] svg{stroke:var(--amber)}
+.badge-dot{position:absolute;top:6px;right:calc(50% - 22px);width:8px;height:8px;border-radius:50%;background:var(--amber)}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stat b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:2rem;line-height:1}
+.stat span{font-size:.82rem;color:var(--steel)}
+.stat.warn{background:var(--amber-soft)}
+.stat.warn b{color:var(--amber-ink)}
+.stat.warn span{color:var(--amber-ink);opacity:.75}
+
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 10px}
+.sec-head h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--steel)}
+.sec-head a{font-size:.85rem;font-weight:600;color:var(--ink);cursor:pointer;background:none;border:0;padding:0}
+
+.feed{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer}
+.card:active{background:var(--panel-2)}
+.card.needs{box-shadow:inset 4px 0 0 var(--amber)}
+.card-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.card-top .place{font-weight:600;font-size:1.02rem;overflow-wrap:anywhere}
+.card-top .when{font-size:.78rem;color:var(--steel);white-space:nowrap;flex-shrink:0}
+.card .notes{margin-top:4px;color:var(--steel);font-size:.92rem;white-space:pre-wrap;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;font-weight:600;border-radius:20px;
+  padding:2px 9px;margin-top:8px}
+.pill.req{background:var(--amber-soft);color:var(--amber-ink)}
+.pill.ok{background:var(--green-soft);color:var(--green)}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:28px 18px;text-align:center;color:var(--steel)}
+.empty b{display:block;color:var(--ink);margin-bottom:4px;font-weight:600}
+
+.formcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px}
+label{display:grid;gap:5px;font-weight:600;font-size:.86rem;color:var(--steel)}
+input,textarea{font:inherit;font-size:1rem;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:8px;padding:11px 12px;width:100%;min-width:0}
+textarea{min-height:80px;resize:vertical;font-weight:400}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.toggle{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;
+  cursor:pointer;font-weight:600;color:var(--ink);background:var(--panel-2)}
+.toggle input{width:20px;height:20px;accent-color:var(--amber);margin:0;flex-shrink:0}
+.toggle.on{border-color:var(--amber);background:var(--amber-soft);color:var(--amber-ink)}
+.actionbox{border-left:3px solid var(--amber);padding-left:11px}
+.actionbox textarea{border-color:var(--amber)}
+.btnrow{display:flex;gap:8px}
+button.primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:8px;
+  padding:13px 16px;font-weight:600;font-size:1rem;flex:1;cursor:pointer}
+button.ghost{background:none;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:13px 16px;
+  font-weight:600;cursor:pointer}
+.status{font-size:.85rem;color:var(--steel);margin-top:2px;min-height:1.2em}
+
+.sheet-backdrop{position:fixed;inset:0;background:rgba(10,12,14,.45);display:flex;align-items:flex-end;
+  justify-content:center;z-index:20}
+.sheet-backdrop[hidden]{display:none}
+.sheet{background:var(--panel);width:100%;max-width:640px;border-radius:16px 16px 0 0;padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px));
+  max-height:82vh;overflow-y:auto}
+.sheet .grabber{width:36px;height:4px;background:var(--line);border-radius:3px;margin:0 auto 14px}
+.sheet h3{margin:0 0 2px;font-size:1.3rem;font-weight:700;overflow-wrap:anywhere}
+.sheet .when{color:var(--steel);font-size:.88rem;margin-bottom:14px}
+.sheet .block{margin-top:12px}
+.sheet .block h4{margin:0 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);font-weight:600}
+.sheet .block p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sheet .actnote{background:var(--amber-soft);color:var(--amber-ink);border-radius:8px;padding:10px 12px}
+.sheet .btnrow{margin-top:18px}
+button.done{border-color:var(--green);color:var(--green)}
+button.del{color:var(--danger);border-color:var(--danger)}
+
+.archive-tools{display:flex;gap:8px;margin:18px 0 16px}
+.search{flex:1;font:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:10px 13px;font-weight:600;font-size:.88rem;cursor:pointer;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.day{margin-top:20px}
+.day h2{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);font-weight:600;
+  margin:0 0 8px;display:flex;justify-content:space-between}
+.exportbtn{width:100%;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <section class="page" id="page-home">
+    <div class="topbar">
+      <div>
+        <h1>Home</h1>
+        <div class="sub" id="todayLabel"></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="countToday">0</b><span>visits today</span></div>
+      <div class="stat warn"><b id="countOpen">0</b><span>open actions</span></div>
+    </div>
+
+    <div class="sec-head"><h2>Recent activity</h2><a id="seeArchive">See all</a></div>
+    <div class="feed" id="recentFeed"></div>
+  </section>
+
+  <section class="page" id="page-log" hidden>
+    <div class="topbar">
+      <div>
+        <h1 id="logTitle">Log a visit</h1>
+        <div class="sub">Add what you did and what's outstanding</div>
+      </div>
+    </div>
+
+    <form class="formcard" id="form" autocomplete="off">
+      <label>Date<input type="date" id="fDate" required></label>
+      <label>Place<input id="fPlace" list="places" placeholder="Site or plant name" required></label>
+      <datalist id="places"></datalist>
+      <label>Notes<textarea id="fNotes" placeholder="What you did on this visit"></textarea></label>
+      <label class="toggle" id="toggleWrap"><input type="checkbox" id="fAction"> Action required</label>
+      <label id="actionWrap" class="actionbox" hidden>What needs doing<textarea id="fActionNote" placeholder="Describe the action required"></textarea></label>
+      <div class="btnrow">
+        <button type="submit" class="primary" id="saveBtn">Save visit</button>
+        <button type="button" class="ghost" id="cancelBtn" hidden>Cancel</button>
+      </div>
+      <div class="status" id="status"></div>
+    </form>
+  </section>
+
+  <section class="page" id="page-archive" hidden>
+    <div class="topbar">
+      <div>
+        <h1>Archive</h1>
+        <div class="sub" id="archiveSub"></div>
+      </div>
+    </div>
+
+    <div class="archive-tools">
+      <input class="search" id="search" type="search" placeholder="Search place or notes">
+      <button type="button" class="chip" id="openChip" aria-pressed="false">Open only</button>
+    </div>
+
+    <div id="archiveList"></div>
+    <button type="button" class="ghost exportbtn" id="exportBtn" hidden>Export CSV</button>
+  </section>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="navitem" data-page="home" aria-current="true">
+      <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+      <span>Home</span>
+    </button>
+    <button type="button" class="navitem" data-page="log" aria-current="false">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      <span>Log visit</span>
+    </button>
+    <button type="button" class="navitem" data-page="archive" aria-current="false">
+      <span class="badge-dot" id="navDot" hidden></span>
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="14" rx="1.5"/><path d="M3.5 10h17M8 3.5v5M16 3.5v5"/></svg>
+      <span>Archive</span>
+    </button>
+  </nav>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop" hidden>
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,"0");
+  const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+  const fmtDay = iso => { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short",year:"numeric"}); };
+  const fmtShort = iso => { const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,{day:"numeric",month:"short"}); };
+
+  let visits = [];
+  let editingId = null;
+  let archiveOpenOnly = false;
+  let store = null;
+  let downloads = null;
+
+  $("todayLabel").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+
+  const pages = { home:$("page-home"), log:$("page-log"), archive:$("page-archive") };
+  function goTo(name){
+    Object.entries(pages).forEach(([k,el])=> el.hidden = k!==name);
+    document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current", String(b.dataset.page===name)));
+    window.scrollTo(0,0);
+    if(name!=="log" && editingId) resetForm();
+  }
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>goTo(b.dataset.page)));
+  $("seeArchive").addEventListener("click",()=>goTo("archive"));
+
+  function resetForm(){
+    editingId = null;
+    $("form").reset();
+    $("fDate").value = todayISO();
+    $("fAction").checked = false;
+    syncToggle();
+    $("logTitle").textContent = "Log a visit";
+    $("saveBtn").textContent = "Save visit";
+    $("cancelBtn").hidden = true;
+    $("status").textContent = "";
+  }
+  function syncToggle(){
+    const on = $("fAction").checked;
+    $("toggleWrap").classList.toggle("on",on);
+    $("actionWrap").hidden = !on;
+  }
+  $("fAction").addEventListener("change",()=>{ syncToggle(); if($("fAction").checked) $("fActionNote").focus(); });
+  $("cancelBtn").addEventListener("click",()=>{ resetForm(); goTo("home"); });
+
+  function setStatus(msg){ $("status").textContent = msg; }
+
+  function startEdit(v){
+    editingId = v.id;
+    $("fDate").value=v.date; $("fPlace").value=v.place;
+    $("fAction").checked=!!v.action; $("fActionNote").value=v.actionNote||""; syncToggle();
+    $("fNotes").value=v.notes||"";
+    $("logTitle").textContent="Edit visit";
+    $("saveBtn").textContent="Save changes";
+    $("cancelBtn").hidden=false;
+    closeSheet();
+    goTo("log");
+  }
+
+  $("form").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const data = {
+      date:$("fDate").value, place:$("fPlace").value.trim(),
+      action:$("fAction").checked, notes:$("fNotes").value.trim()
+    };
+    data.actionNote = data.action ? $("fActionNote").value.trim() : "";
+    if(!data.place){ setStatus("Add a place before saving."); return; }
+    $("saveBtn").disabled=true;
+    try{
+      if(editingId){
+        const old = visits.find(v=>v.id===editingId);
+        data.actionDone = data.action ? (old ? !!old.actionDone : false) : false;
+        await store.update(editingId,data);
+        setStatus("Changes saved.");
+        editingId=null;
+      } else {
+        data.actionDone=false; data.createdAt=Date.now();
+        await store.add(data);
+        setStatus("Visit saved: "+data.place+(data.date===todayISO()?".":" (filed under "+fmtDay(data.date)+")."));
+      }
+      const keepDate = $("fDate").value;
+      resetForm();
+      $("fDate").value = keepDate;
+      $("fPlace").focus();
+    }catch(err){
+      setStatus(err && err.code==="quota_exceeded" ? "The log is full. Delete some old visits to add new ones." : "Couldn't save: "+((err&&err.message)||"try again."));
+    }finally{ $("saveBtn").disabled=false; }
+  });
+
+  function openSheet(v){
+    const s = $("sheet");
+    s.innerHTML = "";
+    const grab=document.createElement("div"); grab.className="grabber"; s.appendChild(grab);
+    const h=document.createElement("h3"); h.textContent=v.place; s.appendChild(h);
+    const when=document.createElement("div"); when.className="when"; when.textContent=(v.date===todayISO()?"Today · ":"")+fmtDay(v.date); s.appendChild(when);
+    if(v.notes){
+      const b=document.createElement("div"); b.className="block";
+      const hh=document.createElement("h4"); hh.textContent="Notes";
+      const p=document.createElement("p"); p.textContent=v.notes;
+      b.append(hh,p); s.appendChild(b);
+    }
+    if(v.action){
+      const b=document.createElement("div"); b.className="block";
+      const hh=document.createElement("h4"); hh.textContent = v.actionDone ? "Action (done)" : "Action required";
+      const p=document.createElement("div"); p.className="actnote"; p.textContent = v.actionNote || "No details given.";
+      b.append(hh,p); s.appendChild(b);
+    }
+    const row=document.createElement("div"); row.className="btnrow";
+    if(v.action){
+      const d=document.createElement("button"); d.type="button"; d.className="ghost"+(v.actionDone?"":" done");
+      d.textContent = v.actionDone ? "Reopen action" : "Mark action done";
+      d.onclick=()=>store.update(v.id,{actionDone:!v.actionDone}).then(closeSheet).catch(err=>setStatus("Couldn't update: "+(err.message||err.code)));
+      row.appendChild(d);
+    }
+    const e=document.createElement("button"); e.type="button"; e.className="ghost"; e.textContent="Edit";
+    e.onclick=()=>startEdit(v);
+    row.appendChild(e);
+    s.appendChild(row);
+    const row2=document.createElement("div"); row2.className="btnrow";
+    const x=document.createElement("button"); x.type="button"; x.className="ghost del"; x.textContent="Delete visit";
+    x.onclick=()=>{ if(confirm("Delete this visit to "+v.place+"?")) store.remove(v.id).then(closeSheet).catch(err=>setStatus("Couldn't delete: "+(err.message||err.code))); };
+    row2.appendChild(x);
+    s.appendChild(row2);
+    $("sheetBackdrop").hidden=false;
+  }
+  function closeSheet(){ $("sheetBackdrop").hidden=true; }
+  $("sheetBackdrop").addEventListener("click",e=>{ if(e.target===$("sheetBackdrop")) closeSheet(); });
+
+  function makeCard(v){
+    const card=document.createElement("article");
+    card.className="card"+(v.action&&!v.actionDone?" needs":"");
+    card.onclick=()=>openSheet(v);
+    const top=document.createElement("div"); top.className="card-top";
+    const place=document.createElement("div"); place.className="place"; place.textContent=v.place||"";
+    const when=document.createElement("div"); when.className="when";
+    when.textContent = v.date===todayISO() ? "Today" : fmtShort(v.date);
+    top.append(place,when); card.appendChild(top);
+    if(v.notes){ const n=document.createElement("div"); n.className="notes"; n.textContent=v.notes; card.appendChild(n); }
+    if(v.action){
+      const pill=document.createElement("span"); pill.className="pill "+(v.actionDone?"ok":"req");
+      pill.textContent = v.actionDone ? "Action done" : "Action required";
+      card.appendChild(pill);
+    }
+    return card;
+  }
+
+  function render(){
+    const t = todayISO();
+    const todays = visits.filter(v=>v.date===t);
+    const open = visits.filter(v=>v.action && !v.actionDone);
+    $("countToday").textContent = todays.length;
+    $("countOpen").textContent = open.length;
+    $("navDot").hidden = open.length===0;
+
+    const places = [...new Set(visits.map(v=>v.place).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const dl=$("places"); dl.textContent="";
+    places.forEach(p=>{ const o=document.createElement("option"); o.value=p; dl.appendChild(o); });
+
+    const recent = [...visits].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0)).slice(0,8);
+    const feed=$("recentFeed"); feed.textContent="";
+    if(!recent.length){
+      const e=document.createElement("div"); e.className="empty";
+      const b=document.createElement("b"); b.textContent="No visits yet";
+      e.append(b, document.createTextNode("Log your first one from the Log visit tab."));
+      feed.appendChild(e);
+    } else {
+      recent.forEach(v=>feed.appendChild(makeCard(v)));
+    }
+
+    $("archiveSub").textContent = visits.length ? visits.length+" visit"+(visits.length===1?"":"s")+" logged in total" : "";
+    const q = $("search").value.trim().toLowerCase();
+    let rows = archiveOpenOnly ? visits.filter(v=>v.action && !v.actionDone) : visits;
+    if(q) rows = rows.filter(v => (v.place||"").toLowerCase().includes(q) || (v.notes||"").toLowerCase().includes(q) || (v.actionNote||"").toLowerCase().includes(q));
+    rows = [...rows].sort((a,b)=> b.date.localeCompare(a.date) || (b.createdAt||0)-(a.createdAt||0));
+
+    const list=$("archiveList"); list.textContent="";
+    $("exportBtn").hidden = visits.length===0 || !downloads;
+    if(!rows.length){
+      const e=document.createElement("div"); e.className="empty";
+      const b=document.createElement("b"); b.textContent = q ? "No matches" : (archiveOpenOnly ? "No open actions" : "Nothing logged yet");
+      e.append(b, document.createTextNode(q?"Try a different search.":(archiveOpenOnly?"Everything's been dealt with.":"Visits you log will build up here.")));
+      list.appendChild(e); return;
+    }
+    let currentDay=null, dayEl=null, countEl=null, dayCount=0;
+    rows.forEach(v=>{
+      if(v.date!==currentDay){
+        currentDay=v.date; dayCount=0;
+        dayEl=document.createElement("section"); dayEl.className="day feed";
+        const h=document.createElement("h2");
+        h.textContent=(v.date===t?"Today, ":"")+fmtDay(v.date);
+        countEl=document.createElement("span"); h.appendChild(countEl);
+        dayEl.appendChild(h); list.appendChild(dayEl);
+      }
+      dayCount++; countEl.textContent = dayCount+(dayCount===1?" visit":" visits");
+      dayEl.appendChild(makeCard(v));
+    });
+  }
+
+  $("search").addEventListener("input",render);
+  $("openChip").addEventListener("click",()=>{
+    archiveOpenOnly=!archiveOpenOnly;
+    $("openChip").setAttribute("aria-pressed",String(archiveOpenOnly));
+    $("openChip").textContent = archiveOpenOnly ? "Showing open only" : "Open only";
+    render();
+  });
+
+  function csvCell(s){ s=String(s??""); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+  $("exportBtn").addEventListener("click", async ()=>{
+    const rows=[...visits].sort((a,b)=>a.date.localeCompare(b.date)||(a.createdAt||0)-(b.createdAt||0));
+    const lines=[["Date","Place","Notes","Action required","What needs doing","Action done"].join(",")]
+      .concat(rows.map(v=>[v.date,v.place,v.notes,v.action?"Yes":"No",v.actionNote||"",v.action?(v.actionDone?"Yes":"No"):""].map(csvCell).join(",")));
+    try{ await downloads.save({filename:"site-visits-"+todayISO()+".csv", data:lines.join("\n")}); }catch(err){}
+  });
+
+  const LS_KEY = "plant-visit-log-v1";
+  function localLoad(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(e){ return []; } }
+  function localSave(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(visits)); }catch(e){} }
+  const localStore = {
+    async add(v){ v.id = "v"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); visits.push(v); localSave(); render(); return v.id; },
+    async update(id,patch){ const v=visits.find(x=>x.id===id); if(v){Object.assign(v,patch); localSave(); render();} },
+    async remove(id){ visits = visits.filter(x=>x.id!==id); localSave(); render(); }
+  };
+
+  resetForm();
+  visits = localLoad(); store = localStore; render();
+  goTo("home");
+
+  (async ()=>{
+    if(!window.claude || !window.claude.use) return;
+    try{ downloads = await window.claude.use("downloads"); render(); }catch(e){}
+    let db=null;
+    try{ db = await window.claude.use("db"); }catch(e){}
+    if(!db) return;
+    const col = db.collection("visits");
+    store = {
+      async add(v){ const ref = await col.add(v); return ref.id; },
+      async update(id,patch){ await col.doc(id).update(patch); },
+      async remove(id){ await col.doc(id).delete(); }
+    };
+    col.onSnapshot(snap=>{
+      visits = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      render();
+    }, err=>{ setStatus("Live sync stopped. Reload the page to reconnect."); });
+  })();
+})();
+</script>
+</body>
+</html>
